@@ -32,7 +32,9 @@
 #                                   (default: critical-rules.md if present)
 
 set -euo pipefail
-shopt -s nocasematch
+# v0.1.1: do NOT enable nocasematch globally — `case "$ADDED_PATHS"`
+# duplicate-detection must remain case-sensitive on Linux. We toggle it
+# only around the keyword `case` blocks where we want flexible matching.
 
 # --- Defaults ---------------------------------------------------------------
 : "${CLAUDE_MEMORY_DIR:?CLAUDE_MEMORY_DIR must be set (path to memory directory)}"
@@ -75,20 +77,42 @@ ADDED_BYTES=0
 TRUNCATED_FILES=""
 
 add_file() {
+    # v0.1.1 hardening:
+    #   - reject path traversal segments ("..") in the input
+    #   - resolve symlinks and confine the resolved path to CLAUDE_MEMORY_DIR
+    #   - keep duplicate-detection case-sensitive (nocasematch is not enabled here)
     local path="$1"
+    case "$path" in
+        *..*) echo "[$TS] reject_traversal: $path" >> "$LOG"; return 0 ;;
+    esac
     case "$ADDED_PATHS" in *"|${path}|"*) return 0 ;; esac
-    if [[ -r "$path" ]]; then
+
+    local real_dir real_path
+    real_dir=$(cd "$CLAUDE_MEMORY_DIR" 2>/dev/null && pwd -P) || return 0
+    real_path=$(readlink -f -- "$path" 2>/dev/null || echo "")
+    if [[ -z "$real_path" ]]; then
+        return 0
+    fi
+    case "$real_path" in
+        "$real_dir"/*|"$real_dir") ;;
+        *)
+            echo "[$TS] reject_outside_dir: $(basename "$path")" >> "$LOG"
+            return 0
+            ;;
+    esac
+
+    if [[ -r "$real_path" ]]; then
         local fsize
-        fsize=$(wc -c < "$path" 2>/dev/null || echo 0)
+        fsize=$(wc -c < "$real_path" 2>/dev/null || echo 0)
         if [[ $((ADDED_BYTES + fsize)) -gt $CLAUDE_MEMORY_MAX_BYTES ]]; then
-            TRUNCATED_FILES="${TRUNCATED_FILES} $(basename "$path")"
-            echo "[$TS] truncated: $(basename "$path") (cumulative cap)" >> "$LOG"
+            TRUNCATED_FILES="${TRUNCATED_FILES} $(basename "$real_path")"
+            echo "[$TS] truncated: $(basename "$real_path") (cumulative cap)" >> "$LOG"
             return 0
         fi
-        printf '\n\n=== %s ===\n' "${path#"$CLAUDE_MEMORY_DIR/"}" >> "$TMP"
-        cat "$path" >> "$TMP"
-        ADDED_PATHS="${ADDED_PATHS}|${path}|"
-        ADDED_NAMES="${ADDED_NAMES}$(basename "$path"), "
+        printf '\n\n=== %s ===\n' "${real_path#"$real_dir/"}" >> "$TMP"
+        cat "$real_path" >> "$TMP"
+        ADDED_PATHS="${ADDED_PATHS}|${real_path}|"
+        ADDED_NAMES="${ADDED_NAMES}$(basename "$real_path"), "
         ADDED_BYTES=$((ADDED_BYTES + fsize))
     fi
 }
@@ -105,6 +129,8 @@ AUX_START_MARK=$(wc -c < "$TMP")
 # routes file format: lines of  pattern|file1,file2,...
 # pattern is a bash glob (e.g. *deploy*|*release* or *paper*|*manuscript*)
 if [[ -n "$CLAUDE_MEMORY_ROUTES" && -r "$CLAUDE_MEMORY_ROUTES" ]]; then
+    # case-insensitive only inside this block; restored on exit.
+    shopt -s nocasematch
     while IFS='|' read -r pattern files; do
         [[ -z "$pattern" || "$pattern" =~ ^[[:space:]]*# ]] && continue
         case "$PROMPT" in
@@ -113,11 +139,19 @@ if [[ -n "$CLAUDE_MEMORY_ROUTES" && -r "$CLAUDE_MEMORY_ROUTES" ]]; then
                 for f in "${fs[@]}"; do
                     f="${f// /}"
                     [[ -z "$f" ]] && continue
+                    # v0.1.1: reject absolute paths and traversal in routes file
+                    case "$f" in
+                        /*|*..*)
+                            echo "[$TS] reject_route: $f" >> "$LOG"
+                            continue
+                            ;;
+                    esac
                     add_file "$CLAUDE_MEMORY_DIR/$f"
                 done
                 ;;
         esac
     done < "$CLAUDE_MEMORY_ROUTES"
+    shopt -u nocasematch
 fi
 
 # --- 3. Manifest-driven routing --------------------------------------------
@@ -211,13 +245,17 @@ for entry in manifest.get("entries", []):
             matched.append(kw)
             inferred_hits += 1
 
-    # filename boost: prompt token literally appears in file name
+    # filename boost: prompt token literally appears in file name.
+    # v0.1.1: dedupe tokens before scoring so 'sandbox sandbox sandbox'
+    # cannot fabricate boost=9.
     fname_lower = fname.lower()
     fname_boost = 0
-    for token in re.split(r"[\s,，、。:;:/／()（）\[\]【】\-_]+", prompt):
-        token = token.strip().lower()
-        if not token or token in FNAME_STOP:
+    seen_tokens: set[str] = set()
+    for raw_token in re.split(r"[\s,，、。:;:/／()（）\[\]【】\-_]+", prompt):
+        token = raw_token.strip().lower()
+        if not token or token in FNAME_STOP or token in seen_tokens:
             continue
+        seen_tokens.add(token)
         if len(token) >= 4 or (len(token) == 3 and token in allow_3char):
             if token in fname_lower:
                 fname_boost += 3

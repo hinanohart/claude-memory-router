@@ -36,8 +36,10 @@ jobs:
           # real personal path or credential. Add patterns to this
           # list as you discover them.
           set -e
-          PATTERNS='(ghp_|sk-ant-|AKIA[0-9A-Z]{16}|GITHUB_TOKEN[[:space:]]*=[[:space:]]*[a-zA-Z0-9]{20,})'
-          if git grep -lE "$PATTERNS" -- ':!*.lock' ':!*.bak' 2>/dev/null; then
+          PATTERNS='(ghp_[A-Za-z0-9]{30,}|sk-ant-[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|GITHUB_TOKEN[[:space:]]*=[[:space:]]*[A-Za-z0-9]{20,})'
+          # v0.1.1: scan EVERY tracked file (no .bak / .lock exclusions).
+          # If a .bak ever appears it is itself the bug we want to surface.
+          if git grep -lE "$PATTERNS" 2>/dev/null; then
             echo "::error ::secret-shaped string committed"
             exit 1
           fi

@@ -32,21 +32,50 @@ Two failure classes matter most:
 
 ## Recommended Claude Code settings
 
-Edit/Write tool deny entries are the single most effective addition.
-They prevent a prompt-injected Claude from rewriting the hook scripts
-out from under you. Add the following to the `permissions.deny` array
-in `~/.claude/settings.json`:
+Edit/Write/MultiEdit tool deny entries are the single most effective
+addition. They prevent a prompt-injected Claude from rewriting the
+hook scripts out from under you. Add the following to the
+`permissions.deny` array in `~/.claude/settings.json`:
 
 ```json
 "Edit(~/path/to/claude-memory-router/**)",
 "Write(~/path/to/claude-memory-router/**)",
+"MultiEdit(~/path/to/claude-memory-router/**)",
+"NotebookEdit(~/path/to/claude-memory-router/**)",
 "Edit(~/.claude/hooks/**)",
 "Write(~/.claude/hooks/**)",
+"MultiEdit(~/.claude/hooks/**)",
 "Edit(~/.claude/agents/**)",
 "Write(~/.claude/agents/**)",
 "Edit(~/.claude/skills/**)",
 "Write(~/.claude/skills/**)"
 ```
+
+## Filesystem confinement (v0.1.1)
+
+The hook now refuses to read any path that resolves outside
+`CLAUDE_MEMORY_DIR`. In particular:
+
+- `add_file` rejects path arguments containing `..` segments.
+- `add_file` calls `readlink -f` and verifies the resolved path is
+  inside `CLAUDE_MEMORY_DIR` — **a symlink in the memory directory
+  pointing at `/etc/passwd` is not followed**.
+- The optional `CLAUDE_MEMORY_ROUTES` file rejects entries containing
+  `..` or absolute paths, so a third party with write access to the
+  routes file cannot use it as an arbitrary-file-read primitive.
+
+The `Read` and `Bash` deny snippets earlier in this document remain
+the primary line of defence; the filesystem confinement is a
+belt-and-braces second line.
+
+## Backup file (`.bak`) retention
+
+The `memory-router-migrate.sh` helper writes a `.bak` next to each
+file it modifies, with mode `600`. The lint companion
+(`claude-memory-lint`) does the same. **These backups are not
+auto-deleted** — you may use them to roll back a bad migration. Once
+you are satisfied, remove them with a one-liner like
+`find $CLAUDE_MEMORY_DIR -maxdepth 1 -name '*.bak' -delete`.
 
 If you also want to block `Bash`-tool redirection into those paths,
 add a `PreToolUse(Bash)` hook with regex matching

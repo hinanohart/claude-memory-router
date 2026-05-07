@@ -152,11 +152,28 @@ for md in sorted(memory_dir.glob("*.md")):
         new_text = block + text
 
     if apply:
+        # v0.1.1: keep .bak readable only by owner, write atomically
         bak = md.with_suffix(md.suffix + ".bak")
         if not bak.exists():
             bak.write_text(text, encoding="utf-8")
-        md.write_text(new_text, encoding="utf-8")
-        os.chmod(md, 0o600)
+            try:
+                os.chmod(bak, 0o600)
+            except OSError:
+                pass
+        tmp = md.with_suffix(md.suffix + f".tmp.{os.getpid()}.{os.urandom(4).hex()}")
+        try:
+            tmp.write_text(new_text, encoding="utf-8")
+            try:
+                os.chmod(tmp, 0o600)
+            except OSError:
+                pass
+            tmp.replace(md)
+        finally:
+            if tmp.exists():
+                try:
+                    tmp.unlink()
+                except OSError:
+                    pass
         changed += 1
         print(f"APPLIED: {md.name}  aliases={aliases}")
     else:
