@@ -1,0 +1,10 @@
+# claude-memory-router — 3-character allowlist
+#
+# Built-in defaults cover oss / wsl / mcp / ssh / cli / gpu / npm / pip etc.
+# Add project-specific 3-letter abbreviations that should survive
+# the "len < 3" prune in the inferred_aliases derivation.
+
+# Examples:
+# api  ← do NOT add this; "api" is in the built-in stop list
+# rag
+# kvm

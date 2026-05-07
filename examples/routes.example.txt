@@ -1,0 +1,14 @@
+# claude-memory-router — user-defined hardcode routes
+#
+# Lines: <bash-glob-pattern>|<comma-separated-files-relative-to-CLAUDE_MEMORY_DIR>
+# Lines starting with # are comments. Pattern is matched against the
+# whole prompt with bash `case` (so use `*foo*`, `*foo*|*bar*`).
+#
+# Use this for very high-confidence keyword routing that should always
+# fire regardless of frontmatter completeness. The manifest path is
+# best for the rest.
+
+# Examples — replace with your own project keywords:
+# *paper*|*manuscript*|*arxiv*|paper-notes.md,paper-tasks.md
+# *deploy*|*release*|deploy-runbook.md
+# *security*|*incident*|security-playbook.md

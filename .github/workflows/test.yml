@@ -1,0 +1,43 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats and shellcheck
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y bats shellcheck jq
+
+      - name: shellcheck
+        run: shellcheck hooks/*.sh
+
+      - name: python compile check
+        run: python3 -m compileall -q hooks tests examples || true
+
+      - name: bats
+        run: bats tests/test_router.bats
+
+  privacy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: forbid leaked tokens / paths in tracked files
+        run: |
+          # The PR/branch must not contain anything that looks like a
+          # real personal path or credential. Add patterns to this
+          # list as you discover them.
+          set -e
+          PATTERNS='(ghp_|sk-ant-|AKIA[0-9A-Z]{16}|GITHUB_TOKEN[[:space:]]*=[[:space:]]*[a-zA-Z0-9]{20,})'
+          if git grep -lE "$PATTERNS" -- ':!*.lock' ':!*.bak' 2>/dev/null; then
+            echo "::error ::secret-shaped string committed"
+            exit 1
+          fi

@@ -1,0 +1,15 @@
+# claude-memory-router — user-extensible STOP_WORDS
+#
+# One token per line. Comments start with `#`. Tokens are matched
+# case-insensitively when a manifest is built. The built-in defaults
+# already cover ~150 common dev / Japanese / English tokens; extend
+# this file with project-specific terms that turn out to be too
+# generic in your own corpus.
+#
+# Goal: reject these from inferred_aliases so that a 1-hit match alone
+# does NOT trigger memory injection.
+
+# Examples — uncomment / extend as needed:
+# orchestrator
+# pipeline
+# dashboard
