@@ -213,6 +213,20 @@ except (OSError, json.JSONDecodeError) as e:
     sys.stderr.write(f"router: manifest load failed: {e}\n")
     sys.exit(0)
 
+# v0.1.2: word boundary match for ASCII keywords, substring for CJK.
+# Prevents 'token' alias from matching 'tokenizer' or compound prompts
+# where the alias is a fragment of a larger English word. CJK keywords
+# keep substring match because there are no word boundaries in CJK text.
+_ASCII_KW_RE = re.compile(r'^[a-z0-9_\-]+$')
+
+def _kw_match(kw_lower: str, prompt: str) -> bool:
+    if not kw_lower:
+        return False
+    if _ASCII_KW_RE.match(kw_lower):
+        pattern = r'(?<![a-z0-9_])' + re.escape(kw_lower) + r'(?![a-z0-9_])'
+        return re.search(pattern, prompt) is not None
+    return kw_lower in prompt
+
 results: list[tuple[int, str, str, list[str]]] = []
 
 for entry in manifest.get("entries", []):
@@ -230,17 +244,17 @@ for entry in manifest.get("entries", []):
     inferred_hits = 0
 
     for kw in entry.get("aliases", []) or []:
-        if kw and len(kw) >= 2 and kw.lower() in prompt:
+        if kw and len(kw) >= 2 and _kw_match(kw.lower(), prompt):
             score += 5
             matched.append(kw)
             explicit_hit = True
     for kw in entry.get("triggers", []) or []:
-        if kw and len(kw) >= 2 and kw.lower() in prompt:
+        if kw and len(kw) >= 2 and _kw_match(kw.lower(), prompt):
             score += 3
             matched.append(kw)
             explicit_hit = True
     for kw in entry.get("inferred_aliases", []) or []:
-        if kw and len(kw) >= 3 and kw.lower() in prompt:
+        if kw and len(kw) >= 3 and _kw_match(kw.lower(), prompt):
             score += 1
             matched.append(kw)
             inferred_hits += 1
@@ -263,9 +277,14 @@ for entry in manifest.get("entries", []):
                     matched.append(token)
     score += fname_boost
 
+    # v0.1.2: removed `(fname_boost >= 6)` rule. Two 4-char tokens that just
+    # appear in a filename (e.g. `hinata` + `2026` for `hinata-2026-04-26.md`)
+    # were enough to inject the file even with zero alias/trigger/inferred
+    # hits. Filename naming alone is too weak a confidence signal —
+    # filename + at least one inferred hit (rule b) is the minimum.
+    # Orphan rescue is still served by `inferred_hits >= 3`.
     if (explicit_hit and score >= 3) \
             or (fname_boost >= 3 and inferred_hits >= 1) \
-            or (fname_boost >= 6) \
             or (inferred_hits >= 3):
         results.append((score, fpath, fname, matched[:3]))
 
