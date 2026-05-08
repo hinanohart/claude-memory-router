@@ -160,6 +160,20 @@ Tested with bash 5.x, Python 3.10+, jq 1.6+. No third-party Python
 packages are required (the frontmatter parser is intentionally
 YAML-lite to avoid a dependency).
 
+## Companion: `claude-memory-lint`
+
+This router pairs with **[claude-memory-lint](https://github.com/hinanohart/claude-memory-lint)**:
+
+- `claude-memory-router` (this repo, Bash) — **runtime** prompt routing
+  via UserPromptSubmit hook; decides which memory files to load for the
+  current turn.
+- `claude-memory-lint` (Python, SARIF/JSON/text reporters) —
+  **compile-time** static analysis of the same memory directory; catches
+  frontmatter rot, oversized files, stop-word noise, and rule-shape
+  violations before they reach the router at runtime.
+
+Same posture, different timing. Use both for full coverage.
+
 ## License
 
 MIT. See `LICENSE`.
