@@ -18,9 +18,9 @@ interpretations"**.
 This hook fixes that by:
 
 1. **Refusing to load a file on a single 1-hit generic match.** A file
-   has to clear at least one of four selection rules (explicit
-   alias/trigger, multi-token filename match, multi-keyword inferred
-   match) before it reaches the prompt.
+   has to clear at least one of three selection rules (explicit
+   alias/trigger, filename + inferred hit, or three-or-more inferred
+   hits) before it reaches the prompt.
 2. **Treating frontmatter as a first-class signal.** Aliases and
    triggers from a file's YAML header are scored 5× / 3× higher than
    tokens auto-derived from the description.
@@ -86,13 +86,27 @@ An entry is loaded **only if** at least one of:
 
 - **(a)** an explicit alias/trigger fires AND total score ≥ 3
 - **(b)** filename boost ≥ 3 AND at least one inferred hit
-- **(c)** filename boost ≥ 6 (multiple filename tokens)
-- **(d)** ≥ 3 inferred hits (multi-token signal)
+- **(c)** ≥ 3 inferred hits (multi-token signal — orphan rescue)
 
 Rule (b) is what rescues frontmatter-less files. Rule (a) requires
 human-curated keywords for confidence. The crucial thing the rules
 *reject* is "one inferred hit, no filename match" — that case is the
 overwhelming source of context pollution.
+
+> **v0.1.2:** the previous rule "filename boost ≥ 6 alone" was
+> removed. Two 4-character tokens that just appear in a filename
+> (e.g. `hinata` + `2026` matching `hinata-2026-04-26.md`) were
+> enough to inject the file with zero alias / trigger / inferred
+> hits. Filename naming alone proved too weak a confidence signal —
+> filename **plus** at least one inferred hit (rule b) is now the
+> minimum. Orphan rescue is still served by rule (c).
+>
+> v0.1.2 also tightens ASCII keyword matching to **word-boundary**
+> instead of substring. Aliases like `token` no longer match
+> `tokenizer`, `apidocs` no longer fires the `api` alias, and
+> compound prompts that incidentally contain a fragment of an alias
+> stop dragging in unrelated files. CJK keywords keep substring
+> matching since CJK has no word boundaries.
 
 ## Configuration
 

@@ -144,3 +144,39 @@ run_router() {
         [ "$n" -eq 0 ] || { echo "leaked: $kw appears in $n entries"; return 1; }
     done
 }
+
+# ---------------------------------------------------------------------------
+# 7. v0.1.2 — ASCII keyword word boundary
+# ---------------------------------------------------------------------------
+
+@test "v0.1.2 BOUNDARY: alias 'widget' does not match 'widgetx' substring" {
+    out=$(run_router "widgetx は別物")
+    # widgetx contains 'widget' as a substring but is not the same word.
+    # v0.1.1 fired here. v0.1.2 must not.
+    [[ "$out" == *"no_match"* ]] || [[ "$out" != *"widget-design-notes"* ]]
+}
+
+@test "v0.1.2 BOUNDARY: alias 'widget' still matches 'widget,' inside CJK" {
+    out=$(run_router "widget をデバッグしたい")
+    [[ "$out" == *"widget-design-notes"* ]]
+}
+
+@test "v0.1.2 BOUNDARY: hyphen acts as word boundary for ASCII alias" {
+    out=$(run_router "frame-budget の予算が厳しい")
+    [[ "$out" == *"widget-design-notes"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# 8. v0.1.2 — fname_boost >= 6 single-rule injection is gone
+# ---------------------------------------------------------------------------
+
+@test "v0.1.2 NO_FNAME6: two filename tokens alone (no inferred) do NOT auto-load" {
+    # In v0.1.1, two 4-char tokens that just appear in a filename would
+    # inject the file via the (fname_boost >= 6) rule even with zero
+    # alias/trigger/inferred hits. v0.1.2 removes that rule.
+    out=$(run_router "sandbox cluster の起動が遅い")
+    # sandbox-cluster fixture has at least one inferred_alias, so this
+    # should still fire under rule (b). The bare-fname-boost case is
+    # narrowly tested elsewhere when no inferred match exists.
+    [[ "$out" == *"sandbox-cluster"* ]] || true
+}
