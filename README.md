@@ -1,5 +1,7 @@
 # claude-memory-router
 
+> **Disclaimer:** This is an **independent third-party tool**. It is **not affiliated with, endorsed by, or sponsored by Anthropic**. "Claude" and "Claude Code" are trademarks of Anthropic and are used here nominatively to identify the official CLI/product this tool integrates with.
+
 A Claude Code `UserPromptSubmit` hook that **routes the prompt to the
 right memory files** instead of carpet-bombing the context with
 everything that vaguely matched.
