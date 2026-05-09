@@ -6,3 +6,14 @@
 *.pyc
 __pycache__/
 .DS_Store
+
+# === Secrets (security/gitignore-env-2026-05-09) ===
+# Added by 2026-05-09 3-agent OSS-wide security audit (Agent A).
+# No secrets are currently tracked; this is preventive hygiene.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+credentials.json
