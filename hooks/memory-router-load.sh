@@ -134,6 +134,7 @@ if [[ -n "$CLAUDE_MEMORY_ROUTES" && -r "$CLAUDE_MEMORY_ROUTES" ]]; then
     while IFS='|' read -r pattern files; do
         [[ -z "$pattern" || "$pattern" =~ ^[[:space:]]*# ]] && continue
         case "$PROMPT" in
+            # shellcheck disable=SC2254  # $pattern is intentionally a glob (see header comment line 130)
             $pattern)
                 IFS=',' read -ra fs <<< "$files"
                 for f in "${fs[@]}"; do
