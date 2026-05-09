@@ -21,7 +21,7 @@ Rule (c) was meant to catch "the prompt names a whole filename
 phrase, very high confidence." In practice, a `fname_boost = 6`
 fired whenever **two** ≥4-character tokens that survived the
 stop-word filter both happened to appear in a filename — for
-example, `hinata` and `2026` for `hinata-2026-04-26.md`. The user
+example, `archive` and `2026` for `archive-2026-04-26.md`. The user
 need not have mentioned aliases, triggers, or inferred terms; just
 having those two tokens anywhere in the prompt was enough to inject
 the file. With a memory directory of dozens of date-stamped notes,
