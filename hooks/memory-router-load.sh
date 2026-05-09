@@ -278,7 +278,7 @@ for entry in manifest.get("entries", []):
     score += fname_boost
 
     # v0.1.2: removed `(fname_boost >= 6)` rule. Two 4-char tokens that just
-    # appear in a filename (e.g. `hinata` + `2026` for `hinata-2026-04-26.md`)
+    # appear in a filename (e.g. `archive` + `2026` for `archive-2026-04-26.md`)
     # were enough to inject the file even with zero alias/trigger/inferred
     # hits. Filename naming alone is too weak a confidence signal —
     # filename + at least one inferred hit (rule b) is the minimum.
