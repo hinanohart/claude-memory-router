@@ -95,7 +95,7 @@ overwhelming source of context pollution.
 
 > **v0.1.2:** the previous rule "filename boost ≥ 6 alone" was
 > removed. Two 4-character tokens that just appear in a filename
-> (e.g. `hinata` + `2026` matching `hinata-2026-04-26.md`) were
+> (e.g. `archive` + `2026` matching `archive-2026-04-26.md`) were
 > enough to inject the file with zero alias / trigger / inferred
 > hits. Filename naming alone proved too weak a confidence signal —
 > filename **plus** at least one inferred hit (rule b) is now the
