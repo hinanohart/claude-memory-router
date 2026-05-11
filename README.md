@@ -192,4 +192,4 @@ Same posture, different timing. Use both for full coverage.
 
 ## License
 
-MIT. See `LICENSE`.
+Apache-2.0. See `LICENSE`.
